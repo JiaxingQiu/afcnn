@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.notebook import tqdm ## Progress bar
 from sklearn.preprocessing import OneHotEncoder # need to upgrade to new version
+from torch.utils.data import Dataset, random_split, DataLoader
 import scipy.io
 import os
 
@@ -16,7 +17,7 @@ import os
 def load_tensor(g, data):
     df = data.loc[data.iloc[:,2701]==g,:]
     init = True
-    for i in range(min(3,df.shape[0]//1000)):
+    for i in range(min(333,df.shape[0]//1000)): # 3 is for sample testing
         if init:
             x = torch.load("./data/x_"+g+"_sub"+str(i)+".pth")
             y = torch.load("./data/y_"+g+"_sub"+str(i)+".pth")
@@ -79,13 +80,13 @@ def train_model(model, optimizer, train_loader, valid_loader, loss_module, num_e
         print("--- valid ---")
         valid_loss, valid_acc, valid_f1 = eval_model(model, valid_loader, loss_module, device)
         print("\n")
-        # early stop criteria here, stop early
+        # early stop criteria here
         if len(train_f1_trace)>0:
             if train_f1 < 0.1*max(train_f1_trace): # if current f1 drop 10% of the best, stop the training
                 print("early stop because malfunctioned training performance!")
                 break
             # if training performance way surpass validation performance (0.2 in f1 scale)
-            if valid_f1 <= train_f1 - 0.2:
+            if valid_f1 <= train_f1 - 0.3:
                 print("early stop because potential overfitting, train >> valid!")
                 break
         
@@ -151,8 +152,8 @@ def eval_model(model, data_loader, loss_module, device):
 
     # loss
     loss = loss_module(preds, trues)
-
-    #     # for dubugging purpose only
+    loss = loss.to('cpu').numpy().reshape(-1)[0] # this is probably a stupid way to get the value out of a tensor
+   #     # for dubugging purpose only
 #     print(preds)
 #     print(trues)
         
